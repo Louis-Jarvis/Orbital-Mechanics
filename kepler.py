@@ -1,7 +1,10 @@
-from cmath import pi
+from asyncio.windows_events import NULL
+from email import generator
 import numpy as np
 from scipy.optimize import newton
 import matplotlib.pyplot as plt
+
+#from utils import setattrs
 
 def trueAnomaly(E,e):
     '''
@@ -72,30 +75,20 @@ def Kepler(M,e,tol = 1e-3,N = 500,v = False):
 
 
 class Orbit():
-    def __init__(self,time,e,a,M,mu,t0 = 0):
-        Ei = Kepler(M,e) ## trueAnomaly
-        theta_i = trueAnomaly(Ei,e)
-
-        ## Attributes - corresponding to orbital parameters
-        ### Constants
+    def __init__(self,time: np.array, e: float, a: float, mu: float) -> None:
+        ### Constants - corresponding to orbital parameters
         self.e = e                      ## eccentricity
         self.a = a                      ## semi-major axis (m)
         self.mu = mu                    ## gravitational parameter of central body
+        self.time = time                ## time array
+    
+    def __repr__(self) -> str:
+        pass
 
-        ## Initial Orbital motion params
-        ##self.M = M                      ## mean anomaly (radians)
-        ##self.E = Ei                     ## eccentric Anomaly (radians)
-        self.theta = theta_i  ## true Anomaly (radians)
-        #elf.r = radialDistance(theta_i,a,e)    ## radial distance
-
-        ## ARRAYS TO STORE INFO 
-        self.time = time
-        #self.altitude = np.zeros(len(time))
-        #self.trueAnomaly = np.zeros(len(time))
-
-    def __update_orbital_params(self,ti): ## private function
+    def __update_orbital_params(self,ti: float) -> tuple: ## private function
         """
-        :param: M0 float the mean anomaly at time t
+        :param: float ti
+        :return: tuple
         """
         Mk = meanAnomaly(ti, self.time[0], self.mu,self.a)
         Ek = Kepler(Mk,self.e)
@@ -103,41 +96,46 @@ class Orbit():
         r1 = radialDistance(thetak,self.a, self.e)
         return  (Mk, Ek, thetak, r1)
 
-    def __iter__(self):
-        
-        ## 1st iteration
-        ##Ek, rk = self.__update_orbital_params(self.time[0])
-
+    def __iter__(self):                 ## generator function (for efficiency purposes)
         for i in range(len(self.time)): ## iteratively update params
-            #pars = self.__update_orbital_params(time[i])
-            #self.trueAnomaly[i] = pars[2] ##TODO this should be theta - also make more memeory efficient??
-            #self.altitude[i] = pars[3]
-            yield self.__update_orbital_params(time[i])
+            yield self.__update_orbital_params(self.time[i])
+
 
 class visOrbit(Orbit):
 
-    def __init__(self,time,**kw):
-        super().__init__(time,**kw)
-        vals = (params for params in self)
-        ## unpack the tuple values from: ((a1,b1,c1,d1),(a2,b2,c2,d2),(a1,b1,c1,d1),...) into ((a1,a2,a3,a4),(b1,b2,b3,b4),(c1,c2,c3,c4),...)
+    def __init__(self,time: np.array,**kw) -> None:
+        super().__init__(time,**kw)        ## access all the attributes from the inherited class
+        vals = (params for params in self) ## unpack the tuple values from: ((a1,b1,c1,d1),(a2,b2,c2,d2),...) into ((a1,a2,a3,a4),(b1,b2,b3,b4),...)
         (self.mean_anomaly, self.eccentric_anomaly, self.true_anomaly, self.radial_distance) = tuple(zip(*vals))
 
+    def __repr__(self) -> str:
+        ##return super().__repr__()
+        pass
+
     def plotAltitude(self,
-                    textsize = 8
-                    ):
+                     textsize = 8,
+                     fontweight = 'bold'
+                     ):
         _,ax = plt.subplots()
         ax.plot(
             np.asarray(self.time)/3600,            ## time in hours
             np.asarray(self.radial_distance)/1e3   ## altitude to km
             )
         
-        ax.set_title('Altitude vs time', fontweight = 'bold', loc = 'center', fontsize = textsize*2)
+        ax.set_title('Altitude vs time', fontweight = fontweight, loc = 'center', fontsize = textsize*2)
         ax.set_ylabel('Altitude (km)')
         ax.set_xlabel('Time (Hours)')
         ax.ticklabel_format(useOffset=False,style = 'plain')
         return ax
         
-    def plotAnomaly(self,which = "true"): ##TODO option to choose which anomaly is plotted
+    def plotAnomaly(self,
+                    which = "true",
+                    textsize = 8,
+                    fontweight = 'bold',
+                    fill = True,
+                    alpha = 0.2,
+                    fillcolour = 'blue'
+                    ): ##TODO option to choose which anomaly is plotted
         
         ## Choose anomaly to plot
         angle = self.true_anomaly if which == "true" else self.mean_anomaly if (which == "mean") else self.eccentric_anomaly
@@ -148,11 +146,13 @@ class visOrbit(Orbit):
             np.asarray(angle)
             )
 
-        ax.set_title('{:s} Anomaly vs Time'.format(which.title()))
-        ax.set_ylabel('{:s} Anomaly (radians)'.format(which.title()))
-        ax.set_xlabel('Time (Hours)')
+        ax.set_title('{:s} Anomaly vs Time'.format(which.title()), fontweight = fontweight, loc = 'center', fontsize = textsize*2)
+        ax.set_ylabel('{:s} Anomaly (radians)'.format(which.title()), fontsize = textsize)
+        ax.set_xlabel('Time (Hours)', fontsize = textsize)
         ax.ticklabel_format(useOffset=False,style= 'plain')
-        plt.fill_between(self.time/3600,0, angle, color='blue', alpha=0.3)
+        
+        if fill is True:
+            plt.fill_between(self.time/3600,0, angle, color=fillcolour, alpha=alpha)
         return ax
     
     def animateOrbit(self):
@@ -189,22 +189,16 @@ if Q1 :
 #Question 2.)
 
 const = {
-    'M': 0,
     'a': 24000e3,
     'e': 0.735,
-    'mu': 3.986e5,
-    't0': 0.0,
+    'mu': 3.986e5
     }
 
-T = (lambda a,mu : 2*np.pi*np.sqrt(a**3/mu))(const['a'],const['mu']) ## orbital periods
-
-time = np.arange(0, 2*T, 15)
+## orbital periods
+T = (lambda a,mu : 2*np.pi*np.sqrt(a**3/mu))(const['a'],const['mu'])
+##time = np.arange(0, 2*T, 1e4)
 
 timeSmall = np.arange(0,36e3,60)
-
-##MEO = Orbit(timeSmall,**const)
-#g = iter(MEO)
-
 myPlot = visOrbit(timeSmall,**const)
 
 myPlot.plotAltitude()
