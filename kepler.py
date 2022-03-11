@@ -97,22 +97,22 @@ class Orbit():
         """
         :param: M0 float the mean anomaly at time t
         """
-        M1 = meanAnomaly(ti, self.time[0], self.mu,self.a)
-        E1 = Kepler(M1,self.e)
-        theta1 = trueAnomaly(E1,self.e)
-        r1 = radialDistance(theta1,self.a, self.e)
-        return  E1, r1
+        Mk = meanAnomaly(ti, self.time[0], self.mu,self.a)
+        Ek = Kepler(Mk,self.e)
+        thetak = trueAnomaly(Ek,self.e)
+        r1 = radialDistance(thetak,self.a, self.e)
+        return  (Mk, Ek, thetak, r1)
 
-    def calcOrbitalMotion(self,time):
+    def __iter__(self):
         
         ## 1st iteration
         ##Ek, rk = self.__update_orbital_params(self.time[0])
 
-        for i in range(0,len(time)): ## iteratively update params
-            Ek, rk = self.__update_orbital_params(time[i])
-            self.trueAnomaly[i] = Ek
-            self.altitude[i] = rk
-        return
+        for i in range(len(self.time)): ## iteratively update params
+            #pars = self.__update_orbital_params(time[i])
+            #self.trueAnomaly[i] = pars[2] ##TODO this should be theta - also make more memeory efficient??
+            #self.altitude[i] = pars[3]
+            yield self.__update_orbital_params(time[i])
 
     def plotAltitude(self):
         _,ax = plt.subplots()
@@ -126,7 +126,7 @@ class Orbit():
         return ax
         
 
-    def plotAnomaly(self):
+    def plotAnomaly(self,which = "true"): ##TODO option to choose which anomaly is plotted
         _,ax = plt.subplots()
         ax.plot(
             self.time/3600,
@@ -135,7 +135,7 @@ class Orbit():
         ax.set_ylabel('Anomaly (radians)')
         ax.set_xlabel('Time (Hours)')
         ax.ticklabel_format(useOffset=False)
-        ##plt.fill_between(np.arange(0,len(self.trueAnomaly)), self.trueAnomaly, color='blue', alpha=0.3)
+        plt.fill_between(self.time/3600,0, self.trueAnomaly, color='blue', alpha=0.3)
         return ax
     
 
@@ -183,10 +183,13 @@ time = np.arange(0, 2*T, 15)
 timeSmall = np.arange(0,36e3,60)
 
 MEO = Orbit(timeSmall,**const)
-MEO.calcOrbitalMotion(timeSmall)
+#g = iter(MEO)
 
-MEO.plotAltitude()
-plt.show()
+vals = [params for params in MEO]
+(mean_anomaly, eccentric_anomaly, true_anomaly, radial_distance) = tuple(zip(*vals))
+
+#MEO.plotAltitude()
+#plt.show()
 
 MEO.plotAnomaly()
 plt.show()
