@@ -83,15 +83,15 @@ class Orbit():
         self.mu = mu                    ## gravitational parameter of central body
 
         ## Initial Orbital motion params
-        self.M = M                      ## mean anomaly (radians)
-        self.E = Ei                     ## eccentric Anomaly (radians)
+        ##self.M = M                      ## mean anomaly (radians)
+        ##self.E = Ei                     ## eccentric Anomaly (radians)
         self.theta = theta_i  ## true Anomaly (radians)
-        self.r = radialDistance(theta_i,a,e)    ## radial distance
+        #elf.r = radialDistance(theta_i,a,e)    ## radial distance
 
         ## ARRAYS TO STORE INFO 
         self.time = time
-        self.altitude = np.zeros(len(time))
-        self.trueAnomaly = np.zeros(len(time))
+        #self.altitude = np.zeros(len(time))
+        #self.trueAnomaly = np.zeros(len(time))
 
     def __update_orbital_params(self,ti): ## private function
         """
@@ -114,29 +114,49 @@ class Orbit():
             #self.altitude[i] = pars[3]
             yield self.__update_orbital_params(time[i])
 
-    def plotAltitude(self):
+class visOrbit(Orbit):
+
+    def __init__(self,time,**kw):
+        super().__init__(time,**kw)
+        vals = (params for params in self)
+        ## unpack the tuple values from: ((a1,b1,c1,d1),(a2,b2,c2,d2),(a1,b1,c1,d1),...) into ((a1,a2,a3,a4),(b1,b2,b3,b4),(c1,c2,c3,c4),...)
+        (self.mean_anomaly, self.eccentric_anomaly, self.true_anomaly, self.radial_distance) = tuple(zip(*vals))
+
+    def plotAltitude(self,
+                    textsize = 8
+                    ):
         _,ax = plt.subplots()
         ax.plot(
-            self.time/3600,          ## hours
-            self.altitude/1e3        ## altitude to km
+            np.asarray(self.time)/3600,            ## time in hours
+            np.asarray(self.radial_distance)/1e3   ## altitude to km
             )
+        
+        ax.set_title('Altitude vs time', fontweight = 'bold', loc = 'center', fontsize = textsize*2)
         ax.set_ylabel('Altitude (km)')
         ax.set_xlabel('Time (Hours)')
-        ax.ticklabel_format(useOffset=False)
+        ax.ticklabel_format(useOffset=False,style = 'plain')
         return ax
         
-
     def plotAnomaly(self,which = "true"): ##TODO option to choose which anomaly is plotted
+        
+        ## Choose anomaly to plot
+        angle = self.true_anomaly if which == "true" else self.mean_anomaly if (which == "mean") else self.eccentric_anomaly
+
         _,ax = plt.subplots()
         ax.plot(
-            self.time/3600,
-            self.trueAnomaly
+            np.asarray(self.time/3600),
+            np.asarray(angle)
             )
-        ax.set_ylabel('Anomaly (radians)')
+
+        ax.set_title('{:s} Anomaly vs Time'.format(which.title()))
+        ax.set_ylabel('{:s} Anomaly (radians)'.format(which.title()))
         ax.set_xlabel('Time (Hours)')
-        ax.ticklabel_format(useOffset=False)
-        plt.fill_between(self.time/3600,0, self.trueAnomaly, color='blue', alpha=0.3)
+        ax.ticklabel_format(useOffset=False,style= 'plain')
+        plt.fill_between(self.time/3600,0, angle, color='blue', alpha=0.3)
         return ax
+    
+    def animateOrbit(self):
+        pass
     
 
 Q1 = False
@@ -182,14 +202,13 @@ time = np.arange(0, 2*T, 15)
 
 timeSmall = np.arange(0,36e3,60)
 
-MEO = Orbit(timeSmall,**const)
+##MEO = Orbit(timeSmall,**const)
 #g = iter(MEO)
 
-vals = [params for params in MEO]
-(mean_anomaly, eccentric_anomaly, true_anomaly, radial_distance) = tuple(zip(*vals))
+myPlot = visOrbit(timeSmall,**const)
 
-#MEO.plotAltitude()
-#plt.show()
+myPlot.plotAltitude()
+plt.show()
 
-MEO.plotAnomaly()
+myPlot.plotAnomaly()
 plt.show()
