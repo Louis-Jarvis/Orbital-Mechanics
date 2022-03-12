@@ -1,8 +1,8 @@
 from asyncio.windows_events import NULL
-from email import generator
 import numpy as np
 from scipy.optimize import newton
 import matplotlib.pyplot as plt
+from typing import Iterable,Iterator, Tuple
 
 #from utils import setattrs
 
@@ -51,10 +51,9 @@ def meanAnomaly(t,t0,mu,a):
     '''
     return np.sqrt( mu/a**3 )*(t-t0)
 
-def degToRad(deg):
-    return deg*(np.pi/180)
+def degToRad(deg): return deg*(np.pi/180)
 
-def Kepler(M,e,tol = 1e-3,N = 500,v = False):
+def Kepler(M: float, e: float, tol = 1e-3, N = 500, v = False) -> float:
     """
     Solves Kepler's 1st equation M - e*sin(E) = E, giving the Eccentric anomaly.
     Use Newton's method to solve f(E) = 0 = M - E - e*sin(E), i.e. find the root E.
@@ -75,7 +74,7 @@ def Kepler(M,e,tol = 1e-3,N = 500,v = False):
 
 
 class Orbit():
-    def __init__(self,time: np.array, e: float, a: float, mu: float) -> None:
+    def __init__(self,time: np.ndarray, e: float, a: float, mu: float) -> None:
         ### Constants - corresponding to orbital parameters
         self.e = e                      ## eccentricity
         self.a = a                      ## semi-major axis (m)
@@ -85,7 +84,7 @@ class Orbit():
     def __repr__(self) -> str:
         pass
 
-    def __update_orbital_params(self,ti: float) -> tuple: ## private function
+    def __update_orbital_params(self,ti: float) -> Tuple: ## private function
         """
         :param: float ti
         :return: tuple
@@ -96,14 +95,14 @@ class Orbit():
         r1 = radialDistance(thetak,self.a, self.e)
         return  (Mk, Ek, thetak, r1)
 
-    def __iter__(self):                 ## generator function (for efficiency purposes)
-        for i in range(len(self.time)): ## iteratively update params
+    def __iter__(self) -> Iterator[Tuple]:     ## generator function (for efficiency purposes)
+        for i in range(len(self.time)):        ## iteratively update params
             yield self.__update_orbital_params(self.time[i])
 
 
 class visOrbit(Orbit):
 
-    def __init__(self,time: np.array,**kw) -> None:
+    def __init__(self,time: np.ndarray,**kw) -> None:
         super().__init__(time,**kw)        ## access all the attributes from the inherited class
         vals = (params for params in self) ## unpack the tuple values from: ((a1,b1,c1,d1),(a2,b2,c2,d2),...) into ((a1,a2,a3,a4),(b1,b2,b3,b4),...)
         (self.mean_anomaly, self.eccentric_anomaly, self.true_anomaly, self.radial_distance) = tuple(zip(*vals))
@@ -194,11 +193,14 @@ const = {
     'mu': 3.986e5
     }
 
-## orbital periods
+## orbital period
+def period(mu,a): return 2*np.pi*np.sqrt(a**3/mu)
+
 T = (lambda a,mu : 2*np.pi*np.sqrt(a**3/mu))(const['a'],const['mu'])
 ##time = np.arange(0, 2*T, 1e4)
 
 timeSmall = np.arange(0,36e3,60)
+
 myPlot = visOrbit(timeSmall,**const)
 
 myPlot.plotAltitude()
