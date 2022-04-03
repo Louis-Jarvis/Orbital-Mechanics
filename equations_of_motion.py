@@ -1,10 +1,14 @@
 from re import M
-from tkinter import W
+from tkinter import W, Y
 from turtle import shape
 from scipy.integrate import solve_ivp
 import numpy as np
 from typing import Tuple
-import matplotlib as plt
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
+from collections import deque
+
+from sympy import Interval
 
 #TODO:
 # equations of motion in:
@@ -71,11 +75,20 @@ class twoBody():
     def Re_solve(self):
         pass
 
-    def plot_position_vs_time(self, vector = 'x' ):
+    def plot_position_vs_time(self, vector = 'x', textsize =  8):
         _,ax = plt.subplots()
-        ax.plot(self.t, getattr(self,vector))
-        ax.set_xlabel()
-        ax.set_ylabel()
+
+        if vector == 'xyz':
+            ax.plot(self.t/3600, self.x, label = 'x') ## TODO use map with this?
+            ax.plot(self.t/3600, self.y, label = 'y')
+            ax.plot(self.t/3600, self.z, label = 'z')
+        elif ( ('x'== vector) | ('y'==vector) | ('z'==vector) ):
+            ax.plot(self.t/3600, getattr(self,vector), label = vector)
+
+        ax.set_title('{:s} vector vs time'.format(vector), fontsize = textsize*2, fontweight = 'bold')
+        ax.set_xlabel('Time (hours)', fontsize = textsize)
+        ax.set_ylabel('{:s} component of position (m)'.format(vector), fontsize = textsize)
+        ax.ticklabel_format(useOffset=False,style= 'plain')
         return ax
 
     def plot_velocity_vs_time(self, vector = 'u' ):
@@ -88,7 +101,52 @@ class twoBody():
     def plot_magnitude_vs_time():
         pass
 
-    r0 = np.array([-5.11196475628565e-12, -12460.3473585584, -24882.7386997828]) * 1e3
-    v0 = np.array([4.38104966252361, -3.60350140900501e-16, -7.19602603237097e-16]) * 1e3
+    def animateOrbit(self,**kwargs):
+        
+        xx = self.x
+        yy = self.y
 
-    X0 = np.concatenate((r0,v0),axis = 0)
+        history_len = len(self.t)
+        fig, ax = plt.subplots() ## Initialise empty plots
+        
+        xdata, ydata = [], []
+        ln, = plt.plot([], [], 'o', **kwargs)
+        trace, = ax.plot([], [], '.-', lw=1, ms=2, **kwargs)
+        history_x, history_y = deque(maxlen=history_len), deque(maxlen=history_len)
+
+        def init():
+            ax.set_xlim(min(xx), max(xx))
+            ax.set_ylim(min(yy), max(yy))
+            return ln,
+
+        def motion(i): ## Fun Fact: this is a closure! It can access the variables in the outer function
+            
+            if i == 0:
+                history_x.clear()
+                history_y.clear()
+
+            history_x.appendleft(xx[i])
+            history_y.appendleft(yy[i])
+
+            #xdata.append(xx[i])
+            #ydata.append(yy[i])
+
+            ln.set_data(xx[i], yy[i])
+            trace.set_data(history_x, history_y)
+            return ln, trace
+
+        #a,_ = motion(1)
+        #b,_ = motion(2)
+
+        ani = FuncAnimation(fig, motion, len(self.y), interval = 20, blit=True, init_func=init)
+        return ani
+
+r0 = np.array([-5.11196475628565e-12, -12460.3473585584, -24882.7386997828]) * 1e3
+v0 = np.array([4.38104966252361, -3.60350140900501e-16, -7.19602603237097e-16]) * 1e3
+
+X0 = np.concatenate((r0,v0),axis = 0)
+
+system = twoBody(X0,0,3600,1e6)
+#system.plot_position_vs_time(vector='xyz')
+system.animateOrbit()
+plt.show()

@@ -1,4 +1,3 @@
-from asyncio.windows_events import NULL
 import numpy as np
 from scipy.optimize import newton
 import matplotlib.pyplot as plt
@@ -19,7 +18,7 @@ def trueAnomaly(E,e):
     theta = 2 * np.arctan( np.tan(.5 * E) / np.sqrt( (1 - e)/(1 + e) ) )    
     return theta if (theta >= 0.0 ) else theta + np.pi
 
-def radialDistance(theta,a,e):
+def radialDistance(theta: float, a: float, e:float) -> float:
     '''
     Radial distance from the focus
     Derived using equations:  
@@ -34,7 +33,7 @@ def radialDistance(theta,a,e):
     r = ( a*(1 - e**2) )/(1 + e*np.cos(theta))
     return r
 
-def meanAnomaly(t,t0,mu,a):
+def meanAnomaly(t: float, t0: float, mu: float, a:float) -> float:
     '''
     This calculates the mean anomaly
     Mean anomaly is the angle between the periapsis point and the *imagined* position of an object for the same elapsed time 
@@ -53,7 +52,7 @@ def meanAnomaly(t,t0,mu,a):
 
 def degToRad(deg): return deg*(np.pi/180)
 
-def Kepler(M: float, e: float, tol = 1e-3, N = 500, v = False) -> float:
+def Kepler(M: float, e: float, tol = 1e-3, N: int = 500, v: bool = False) -> float:
     """
     Solves Kepler's 1st equation M - e*sin(E) = E, giving the Eccentric anomaly.
     Use Newton's method to solve f(E) = 0 = M - E - e*sin(E), i.e. find the root E.
@@ -124,7 +123,7 @@ class visOrbit(Orbit):
         ax.set_title('Altitude vs time', fontweight = fontweight, loc = 'center', fontsize = textsize*2)
         ax.set_ylabel('Altitude (km)')
         ax.set_xlabel('Time (Hours)')
-        ax.ticklabel_format(useOffset=False,style = 'plain')
+        ax.ticklabel_format(useOffset=False, style = 'plain')
         return ax
         
     def plotAnomaly(self,
@@ -140,10 +139,7 @@ class visOrbit(Orbit):
         angle = self.true_anomaly if which == "true" else self.mean_anomaly if (which == "mean") else self.eccentric_anomaly
 
         _,ax = plt.subplots()
-        ax.plot(
-            np.asarray(self.time/3600),
-            np.asarray(angle)
-            )
+        ax.plot(np.asarray(self.time/3600), np.asarray(angle))
 
         ax.set_title('{:s} Anomaly vs Time'.format(which.title()), fontweight = fontweight, loc = 'center', fontsize = textsize*2)
         ax.set_ylabel('{:s} Anomaly (radians)'.format(which.title()), fontsize = textsize)
@@ -154,11 +150,8 @@ class visOrbit(Orbit):
             plt.fill_between(self.time/3600,0, angle, color=fillcolour, alpha=alpha)
         return ax
     
-    def animateOrbit(self):
-        pass
-    
 
-Q1 = False
+Q1 = True
 ###############################################################################################
 if Q1 :
     # Question 1.)
